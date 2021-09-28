@@ -12,6 +12,10 @@ df.columns
 rename={'#chrA':'ChrA','posA':'PosA', 'ortA':'OrtA','chrB':'ChrB', 'posB':'PosB', 'ortB':'OrtB'}
 df = df.rename(columns=rename)
 
+#### drop null lines
+idx = (~df['ChrA'].isnull()) & (~df['ChrB'].isnull()) & (~df['PosA'].isnull()) & (~df['PosB'].isnull())
+df = df.loc[idx,:]
+
 #### make sure no non-numeric values
 ix1 = pd.to_numeric(df['PosA'], errors='coerce').isnull()
 df = df.loc[~ix1]
