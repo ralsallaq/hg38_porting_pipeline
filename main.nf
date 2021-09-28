@@ -6,13 +6,13 @@ nextflow.enable.dsl = 2
 /* 
  * Run using the following command: 
  * 
- *   nextflow run reference_update_comparison_pipeline.nf 
+ *   nextflow run main.nf 
  * 
  * 
  * The following parameters can be provided as command line options  
  * replacing the prefix `params.` with `--` e.g.:   
  * 
- *   nextflow run reference_update_comparison_pipeline.nf --sampleInfo ./sampleInfo.csv
+ *   nextflow run main.nf --mode 'crest'
  *   Ramzi Alsallaq
  * 
  */
