@@ -53,6 +53,14 @@ if len(fromChromosomeFormat.split("chr")) == 1: #lifting from hg19
     idx2 = (~df['ChrB'].isin(['X','Y']) ) & (~df['ChrB'].str.isnumeric()) 
     df = df.loc[~idx2]
 
+#### if from format is chrX (i.e. we are lifting over from hg38, chromosome names with alt in them (e.g. chr7_KI270803v1_alt will cause liftover_sv.sh to fail b/c these are not in the reference /research/rgs01/resgen/ref/tartan/runs/ad_hoc/NAME-4tmOgtgc/output/sequence/fasta/GRCh38_no_alt.fa
+if len(fromChromosomeFormat.split("chr")) > 1: #lifting from hg38
+    ## detecting when chromosoe name has _alt in it
+    idx1 = df['ChrA'].apply(lambda r: True if len(r.split("_alt"))>1 else False)
+    df = df.loc[~idx1]
+    idx2 = df['ChrB'].apply(lambda r: True if len(r.split("_alt"))>1 else False)
+    df = df.loc[~idx2]
+
 ##### make sure that positions are intgers
 df.loc[:,'PosA'] = df['PosA'].astype(int)
 df.loc[:,'PosB'] = df['PosB'].astype(int)
