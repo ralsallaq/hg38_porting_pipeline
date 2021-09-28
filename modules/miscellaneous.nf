@@ -30,8 +30,8 @@ df.rename(columns=cols, inplace=True)
 
 #### convert position to integer
 ### first drop null values 
-df =df[~df['start1'].isnull()]
-df =df[~df['start2'].isnull()]
+idx = (~df['chrom1'].isnull()) & (~df['chrom2'].isnull()) & (~df['start1'].isnull()) & (~df['start2'].isnull())
+df = df.loc[idx,:]
 
 #### what is left are either numbers (float/int) or strings
 #### convert to str
