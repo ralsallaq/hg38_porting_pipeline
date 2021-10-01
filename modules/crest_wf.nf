@@ -113,11 +113,11 @@ echo -e "will save overlapping features for pair to ${pairName}_wliftover_both_s
 
 #pairToPair -f 1e-9 -type both  -slop 10 -is -a hgFromF -b hgToF |sort -k1,1V -k2,2n -k3,3n | uniq > ${pairName}_wliftover_both_samestrand.dbedpe
 echo -e "will use slop of ${params.slop} in the pairToPair to get overlaps" 
-pairToPair  -type both -slop "${params.slop}" -is -a hgFromF -b hgToF | sort -k1,1V -k2,2n -k3,3n | uniq > ${pairName}_wliftover_both_samestrand.dbedpe
+pairToPair  -type both -slop "${params.slop}" -a hgFromF -b hgToF | sort -k1,1V -k2,2n -k3,3n | uniq > ${pairName}_wliftover_both_samestrand.dbedpe
 
 wait
 ##### added for testing, generally this gives the same results as the one above
-pairToPair -type both -slop "${params.slop}" -is -b hgFromF -a hgToF | sort -k1,1V -k2,2n -k3,3n | uniq > ${pairName}_wliftover_both_samestrand.dbedpe_flipped
+pairToPair -type both -slop "${params.slop}"  -b hgFromF -a hgToF | sort -k1,1V -k2,2n -k3,3n | uniq > ${pairName}_wliftover_both_samestrand.dbedpe_flipped
 ######
 
 wait
