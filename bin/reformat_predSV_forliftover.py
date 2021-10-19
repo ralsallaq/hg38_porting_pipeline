@@ -5,12 +5,21 @@ import os
 predSVFile=sys.argv[1]
 outputFile=sys.argv[2]
 fromChromosomeFormat=sys.argv[3] #either chrX or X, chr1, or 1, ..etc
-print("input arguments were (three are required): ",sys.argv)
-df = pd.read_csv(predSVFile, sep="\t")
-df.head()
-df.columns
-rename={'#chrA':'ChrA','posA':'PosA', 'ortA':'OrtA','chrB':'ChrB', 'posB':'PosB', 'ortB':'OrtB'}
-df = df.rename(columns=rename)
+inputFormat=sys.argv[4] #either rawCrest or bedpe
+print("input arguments were (four are required): ",sys.argv)
+if inputFormat == "rawCrest":
+    df = pd.read_csv(predSVFile, sep="\t")
+    rename={'#chrA':'ChrA','posA':'PosA', 'ortA':'OrtA','chrB':'ChrB', 'posB':'PosB', 'ortB':'OrtB'}
+    df = df.rename(columns=rename)
+elif inputFormat == "bedpe":
+	df = pd.read_csv(predSVFile, sep="\t", header=None)
+	### from bedpe to rawCrest format one needs to get the coords 1-based
+	### here take the padded coord instead
+	df = df.iloc[:,[0,2,3,5,6,7,8,9]]
+	cols = ['ChrA','PosA','ChrB','PosB','Type','score','OrtA','OrtB']
+	df.columns = cols
+	df = df[['ChrA','PosA','OrtA','ChrB','PosB','OrtB','Type','score']]
+	
 
 #### drop null lines
 idx = (~df['ChrA'].isnull()) & (~df['ChrB'].isnull()) & (~df['PosA'].isnull()) & (~df['PosB'].isnull())
