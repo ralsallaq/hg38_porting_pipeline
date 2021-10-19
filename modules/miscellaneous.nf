@@ -6,9 +6,10 @@ process reformatLOPredSVToBEDPE {
 
     input:
     tuple val(anlsRunName), val(pairName), val(genome), path(rawSomaticSVcalls)
-
+    val(finalGenome)
+    
     output:
-    tuple val(anlsRunName), val(pairName), val(genome), path("${pairName}_${genome}.bedpe"), emit: bedpeCrestOutput_ch
+    tuple val(anlsRunName), val(pairName), val(genome), path("${pairName}_${genome}_In${finalGenome}.bedpe"), emit: bedpeCrestOutput_ch
 
     beforeScript "export PATH=${workflow.projectDir}/bin:$PATH; source set_env.sh"
 
@@ -23,9 +24,12 @@ import glob
 print('reading in predSV file ','${rawSomaticSVcalls}')
 df = pd.read_csv('${rawSomaticSVcalls}', sep='\\t')
 #### geometric mean of the coverage of the two points
-df.loc[:,'geomMeanCov'] = np.sqrt(df['CoverA']*df['CoverB']).values
-#ChrA    PosA    OrtA    ChrB    PosB    OrtB    Type    CoverA  CoverB
-cols={'ChrA':'chrom1','ChrB':'chrom2','OrtA':'strand1','OrtB':'strand2','PosA':'start1','PosB':'start2','Type':'name','CoverA':'cover1','CoverB':'cover2'}
+if df.columns.isin(['CoverA','CoverB']).sum()==2:
+    df.loc[:,'score'] = np.sqrt(df['CoverA']*df['CoverB']).values
+elif df.columns.isin(['score']).sum()==1:
+    pass
+    
+cols={'ChrA':'chrom1','ChrB':'chrom2','OrtA':'strand1','OrtB':'strand2','PosA':'start1','PosB':'start2','Type':'name'}
 df.rename(columns=cols, inplace=True)
 
 #### convert position to integer
@@ -67,21 +71,36 @@ df.loc[:,'start2'] = df['start2'].astype(float).astype(int) - 1
 
 df.loc[:,'end1'] = df['start1']+1
 df.loc[:,'end2'] = df['start2']+1
-df = df[['chrom1', 'start1','end1','chrom2', 'start2','end2','name', 'geomMeanCov','strand1','strand2','cover1', 'cover2']]
+df = df[['chrom1', 'start1','end1','chrom2', 'start2','end2','name', 'score','strand1','strand2']]
 
 
-### change the name of chromosomes from 1 to chr1 
-def formatChrom(row):
+### change the name of chromosomes from 1 to chr1 or chr1 to 1 depending on the finalFormat
+finalFormat = "chrX" if '${finalGenome}'=="hg38" else "X"
+
+def addChr(row):
     if type(row) is str:
         return row.strip() if len(row.split('chr'))==2 else 'chr'+row.strip()
     else:
-        new_r = str(int(float(row))).strip()
+        new_r = str(int(row)).strip()
         return 'chr'+new_r
-        
-df.loc[:,'chrom1'] = df['chrom1'].apply(lambda r: formatChrom(r)).astype(pd.StringDtype())
-df.loc[:,'chrom2'] = df['chrom2'].apply(lambda r: formatChrom(r)).astype(pd.StringDtype())
 
-df.to_csv('${pairName}_${genome}.bedpe',sep='\\t', header=None, index=False)
+def removeChr(row):
+    if type(row) is str:
+        return row.strip() if len(row.split('chr'))==1 else row.split("chr")[1].strip()
+    else:
+        new_r = str(int(row)).strip()
+        return new_r
+
+def formatChrom(row, finalFormat):
+    if len(finalFormat.split("chr"))>1: #final format is chrX, ..etc
+        return addChr(row)
+    else:
+        return removeChr(row)
+        
+df.loc[:,'chrom1'] = df['chrom1'].apply(lambda r: formatChrom(r,finalFormat)).astype(pd.StringDtype())
+df.loc[:,'chrom2'] = df['chrom2'].apply(lambda r: formatChrom(r,finalFormat)).astype(pd.StringDtype())
+
+df.to_csv('${pairName}_${genome}_In${finalGenome}.bedpe',sep='\\t', header=None, index=False)
 
 print('done')
 
