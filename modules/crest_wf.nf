@@ -2,8 +2,10 @@
 include { liftoverSVs as liftoverSVs_round1 }  from './liftover_wf'
 include { liftoverSVs as liftoverSVs_round2 }  from './liftover_wf'
 include { liftoverSVs }  from './liftover_wf'
+include { liftoverSVs as liftoverMissing }  from './liftover_wf' params(outD:null,FromTo: 'missing_hg38Tohg19')
 include {reformatLOPredSVToBEDPE as refor_hg38_ToBEDPE } from './miscellaneous.nf'
 include {reformatLOPredSVToBEDPE as refor_hg19_ToBEDPE } from './miscellaneous.nf'
+include {reformatLOPredSVToBEDPE as refor_missing_ToBEDPE } from './miscellaneous.nf' params(outD:'analysis/',FromTo: 'missing_hg38Tohg19')
 
 workflow crest_wf {
     take:crest_runs_ch
@@ -15,18 +17,18 @@ workflow crest_wf {
 
         /***** to reduce liftover artifacts liftover for hg38 data will be done twice  and for hg19 only once****/
         //liftover hg38 to hg19
-        liftoverSVs_round1(crest_runs_ch.filter{it[2]=='hg38'}, channel.value('GRCh38|to|GRCh37-lite'), channel.value('hg38_to_hg19'), channel.value('chrX'))
+        liftoverSVs_round1(crest_runs_ch.filter{it[2]=='hg38'}, channel.value('GRCh38|to|GRCh37-lite'), channel.value('hg38_to_hg19'), channel.value('chrX'), channel.value('rawCrest'))
         //liftover hg19 back to hg38
-        liftoverSVs_round2(liftoverSVs_round1.out, channel.value('GRCh37-lite|to|GRCh38'), channel.value('hg19_to_hg38'), channel.value('X'))
+        liftoverSVs_round2(liftoverSVs_round1.out, channel.value('GRCh37-lite|to|GRCh38'), channel.value('hg19_to_hg38'), channel.value('X'), channel.value('rawCrest'))
         
-        //reformat to bedpe
-        refor_hg38_ToBEDPE(liftoverSVs_round2.out)
+        //reformat to bedpe, the final coord and format is hg38
+        refor_hg38_ToBEDPE(liftoverSVs_round2.out, channel.value('hg38'))
 
         //pass only predSV for hg19
-        liftoverSVs(crest_runs_ch.filter{it[2]=='hg19'}, channel.value('GRCh37-lite|to|GRCh38'), channel.value('hg19_to_hg38'),channel.value('X'))
+        liftoverSVs(crest_runs_ch.filter{it[2]=='hg19'}, channel.value('GRCh37-lite|to|GRCh38'), channel.value('hg19_to_hg38'),channel.value('X'), channel.value('rawCrest'))
 
-        //reformat to bedpe
-        refor_hg19_ToBEDPE(liftoverSVs.out)
+        //reformat to bedpe, notice this will be in hg38 coordinates and formats
+        refor_hg19_ToBEDPE(liftoverSVs.out, channel.value('hg38'))
 
         //combine channels hg38 first and hg19 second
         bedpe_combined_ch = refor_hg38_ToBEDPE.out.filter{it[2]=='hg38'}.map{it->[it[1], it[0], it[2], it[3]]}.join(refor_hg19_ToBEDPE.out.filter{it[2]=='hg19'}.map{it->[it[1], it[0], it[2], it[3]]})
@@ -37,7 +39,7 @@ workflow crest_wf {
             liftoverSVs_round2.out.filter{it[2]=='hg38'}.join(liftoverSVs.out)
 
     } else if (params.FromTo == 'hg38_to_hg19') {
-
+        //TODO
         //run reformatToBEDPE on genomeTo
 
         reformatToBEDPE(crest_runs_ch.filter{it[2]=='hg19'})
@@ -64,10 +66,16 @@ workflow crest_wf {
     compareSVs.out.map{it->it[1]}
         .collectFile(name: "${params.outD}/bedpe_comp_${params.FromTo}/summary_all.out", keepHeader:true, skip:1, newLine:true)
         .view {file -> "pair\tNbreakpnts_hgFrom\tNbreakpnts_hgTo\tNoverlappingSVs\tNoverlap_match_type\tNoverlap_discordant_type\tNmissing\tNextra:${file.text}" }
-
     //get variant discordant rates for each pair for each sample used formula from functional equivalence paper (Nature Communincation 2018) 
     //formula for pair = (discordant + 0-only + 1-only + discordant_discordant_type)/(match+ discordant + match_discordant_type + discordant_discordant_type + 0-only + 1-only) 
     //match=overlapping positions AND same_strand AND sv-type is the same AND genotype is the same. match_discordant_type= all the same except sv-type. discordant=If there is overlap but genotypes are different irrespective if the sv-types are the same. discordant_discordant_type=if there is overlap and both genotype and sv-type are different.   
+    
+    //finally liftover Missing to hg19 coords so that we can compare with other data
+    liftover_inp_ch = compareSVs.out.map{it->[it[0],it[0],it[3]]}.combine(channel.value('hg38')).map{it->[it[0],it[1],it[3],it[2]]}
+    liftover_inp_ch.view()
+    liftoverMissing(liftover_inp_ch, channel.value('GRCh38|to|GRCh37-lite'), channel.value('hg38_to_hg19'), channel.value('chrX'), channel.value('bedpe'))
+    //the missing in hg19 coord and format
+    refor_missing_ToBEDPE(liftoverMissing.out, channel.value('hg19'))
     
 }//end of workflow
 
