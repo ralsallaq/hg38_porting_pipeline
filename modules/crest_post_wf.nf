@@ -10,13 +10,14 @@ workflow crest_post_wf {
     
     
     if ( params.FromTo == 'hg19_to_hg38') {
+     
 
     concatFusions_hg19(crest_post_runs_ch.filter{it[4]=='hg19'}.map {it->it[5]}.toList(), channel.value('hg19'))
     concatFusions_hg38(crest_post_runs_ch.filter{it[4]=='hg38'}.map {it->it[5]}.toList(), channel.value('hg38'))
 
     predSVFusions_combined_ch = concatFusions_hg38.out.combine(concatFusions_hg19.out)
 
-    //predSVFusions_combined_ch.view()
+    predSVFusions_combined_ch.view()
     compareFusionGenes(predSVFusions_combined_ch)
 
     
@@ -37,6 +38,8 @@ process compareFusionGenes {
 
     """
 #!/usr/bin/env python3
+import numpy as np
+import pandas as pd
 ## define useful functions
 def getNotNullFusionsForPair(pair):
     df19 = hg19_all[hg19_all['Sample(s)']==pair]
@@ -46,6 +49,16 @@ def getNotNullFusionsForPair(pair):
     df38 = df38[~df38['Fusion Gene'].isnull()]
     cols = ['Sample(s)','ChrA','PosA','OrientA','GeneA','NumReadsA','ChrB', 'PosB', \
             'OrientB','GeneB','NumReadsB','Type','Usage','Fusion Gene','CDS','rating']
+    if (df19.columns.isin(['rating']).sum()==1) and (df38.columns.isin(['rating']).sum()==1):
+        pass
+    elif df19.columns.isin(['rating']).sum()==0:
+        df19.loc[:,'rating'] = np.nan
+    elif df38.columns.isin(['rating']).sum()==0:
+        df38.loc[:,'rating'] = np.nan
+    else: #both without rating
+        df19.loc[:,'rating'] = np.nan
+        df38.loc[:,'rating'] = np.nan
+
     df19 = df19[cols]
     df38 = df38[cols]
     return df38, df19
@@ -224,21 +237,21 @@ def compareFusionsForPair(pair, missingHQonly=False, extraHQonly=False):
 ##### process the files
 
 ##tuple path(fusionGenesFileTo), path(fusionGenesFileFrom)
-hg38_all = "${fusionGenesFileTo}"
-hg19_all = "${fusionGenesFileFrom}"
+hg38_all = pd.read_csv("${fusionGenesFileTo}")
+hg19_all = pd.read_csv("${fusionGenesFileFrom}")
 print("heads of files")
-print("The ToGenome file for combined fusions:\n")
+print("The ToGenome file for combined fusions:\\n")
 print(hg38_all.head())
-print("The FromGenome file for combined fusions:\n")
+print("The FromGenome file for combined fusions:\\n")
 print(hg19_all.head())
 
 print("tails of files")
-print("The ToGenome file for combined fusions:\n")
-print(hg38_all.tails())
-print("The FromGenome file for combined fusions:\n")
-print(hg19_all.tails())
+print("The ToGenome file for combined fusions:\\n")
+print(hg38_all.tail())
+print("The FromGenome file for combined fusions:\\n")
+print(hg19_all.tail())
 
-print("processing the files\n")
+print("processing the files\\n")
 
 pairsTo = hg38_all['Sample(s)'].sort_values().drop_duplicates().values
 pairsFrom = hg19_all['Sample(s)'].sort_values().drop_duplicates().values
@@ -255,10 +268,10 @@ for p in pairsTo:
     hg19_dfs.append(temp2)
     df_summary_dfs.append(temp3)
 
-print("combine summaries from all pairs as is \n")
+print("combine summaries from all pairs as is \\n")
 df_summary_all = pd.concat(df_summary_dfs, axis=0)
 
-print("simplify how the genes are stored (strings)\n")
+print("simplify how the genes are stored (strings)\\n")
 def convertRowToStr(row):
     if pd.isna(row):
         return None
@@ -274,8 +287,8 @@ for c in ["hg38Set", "hg19Set","intrsx","missing","extra"]:
     convertColToStr(c)
 
 
-print("save combined summaries into a CSV file\n")
-df_summary_all.to_csv("summary_comp_fusionGenes.csv"
+print("save combined summaries into a CSV file\\n")
+df_summary_all.to_csv("summary_comp_fusionGenes.csv", index=False)
 
 print("Done")
 

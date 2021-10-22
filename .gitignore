@@ -1,7 +1,10 @@
 analysis
+analysis_scratch.py
+fusion_genes_comp
 .ipynb_checkpoints/
 .nextflow.log*
 nextflow
 .nextflow
+compareSVs_CREST_analysisCombRun.ipynb
 work
 

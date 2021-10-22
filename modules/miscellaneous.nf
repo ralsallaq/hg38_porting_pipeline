@@ -113,7 +113,8 @@ process concatFusions {
     publishDir "${params.outD}/crest-post/", mode: 'copy'
 
     input:
-    tuple path(fusionSVFiles), val(genome)
+    path(fusionSVFiles)
+    val(genome)
 
     output:
     path("fusionSVFromAllpairs_${genome}.csv"), emit: combinedCrestPostOutput_ch
