@@ -7,4 +7,6 @@ nextflow
 .nextflow
 compareSVs_CREST_analysisCombRun.ipynb
 work
-
+work_crest_post
+prepFile
+modules/crest_post_wcoord_wf_s0.nf

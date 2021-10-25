@@ -17,7 +17,7 @@ if df.columns.shape[0]==20: #dbedpe-->overlapping results
     #print(df.head())
     print("nu_overalps","\toverlap-match-type","\toverlap-discordant-type","\tmeanAbsDiffgeomCov","\tmeanMidGeomCov")
     print(df.shape[0],"\t", df.loc[:,'match-type'].sum(),"\t",df.shape[0]-df.loc[:,'match-type'].sum(),"\t",df.loc[:,'absDiffGeomCov'].mean(),"\t",df.loc[:,'midGeomCov'].mean())
-elif df.columns.shape[0]==10: #bedpe--> missing/extra results
+elif df.columns.shape[0]<20 and df.columns.shape[0]>=10: #bedpe--> missing/extra results
     df.loc[:,'geomCov'] = df.loc[:,7]
     #print(df.head())
     print("meangeomCov")

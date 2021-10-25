@@ -5,20 +5,34 @@ import os
 predSVFile=sys.argv[1]
 outputFile=sys.argv[2]
 fromChromosomeFormat=sys.argv[3] #either chrX or X, chr1, or 1, ..etc
-inputFormat=sys.argv[4] #either rawCrest or bedpe
+inputFormat=sys.argv[4] #either rawCrest crestPost or bedpe
 print("input arguments were (four are required): ",sys.argv)
 if inputFormat == "rawCrest":
     df = pd.read_csv(predSVFile, sep="\t")
     rename={'#chrA':'ChrA','posA':'PosA', 'ortA':'OrtA','chrB':'ChrB', 'posB':'PosB', 'ortB':'OrtB'}
     df = df.rename(columns=rename)
 elif inputFormat == "bedpe":
-	df = pd.read_csv(predSVFile, sep="\t", header=None)
-	### from bedpe to rawCrest format one needs to get the coords 1-based
-	### here take the padded coord instead
-	df = df.iloc[:,[0,2,3,5,6,7,8,9]]
-	cols = ['ChrA','PosA','ChrB','PosB','Type','score','OrtA','OrtB']
-	df.columns = cols
-	df = df[['ChrA','PosA','OrtA','ChrB','PosB','OrtB','Type','score']]
+    df = pd.read_csv(predSVFile, sep="\t", header=None)
+    ### from bedpe to rawCrest format one needs to get the coords 1-based
+    ### here take the padded coord instead
+    df = df.iloc[:,[0,2,3,5,6,7,8,9]]
+    cols = ['ChrA','PosA','ChrB','PosB','Type','score','OrtA','OrtB']
+    df.columns = cols
+    df = df[['ChrA','PosA','OrtA','ChrB','PosB','OrtB','Type','score']]
+elif inputFormat == "crestPost":
+    df = pd.read_csv(predSVFile, sep="\t")
+    rename={'OrientA':'OrtA','OrientB':'OrtB'}
+    df = df.rename(columns=rename)
+    #df = df[['ChrA','PosA','OrtA','ChrB','PosB','OrtB','Type','Fusion Gene','rating','Usage','Sample(s)']]
+    if df.columns.isin(['rating', 'Usage']).sum()==2:
+        cols=['ChrA','PosA','OrtA','ChrB','PosB','OrtB','Type','CoverA','CoverB','Fusion Gene','rating','Usage']
+    elif df.columns.isin(['rating']).sum()==1:
+        cols=['ChrA','PosA','OrtA','ChrB','PosB','OrtB','Type','CoverA','CoverB','Fusion Gene','rating']
+    elif df.columns.isin(['Usage']).sum()==1:
+        cols=['ChrA','PosA','OrtA','ChrB','PosB','OrtB','Type','CoverA','CoverB','Fusion Gene','Usage']
+    else:
+        cols=['ChrA','PosA','OrtA','ChrB','PosB','OrtB','Type','CoverA','CoverB','Fusion Gene']
+    df = df[cols]
 	
 
 #### drop null lines

@@ -87,7 +87,7 @@ process compareSVs {
     tuple val(pairName), val(anlsRunNameTo), val(genomeTo), file(bedpeFileTo), val(anlsRunNameFrom), val(genomeFrom), file(bedpeFileFrom)
 
     output:
-    tuple val(pairName), file("summary_${pairName}_${params.FromTo}"), file("${pairName}_wliftover_both_samestrand.dbedpe"), file("${pairName}_wliftover_missing.bedpe"), file("${pairName}_wliftover_extra.bedpe"), emit: pairToPairOutput_ch
+    tuple val(pairName), file("summary_${pairName}_${params.FromTo}"), file("${pairName}_wliftover_match.dbedpe"), file("${pairName}_wliftover_missing.bedpe"), file("${pairName}_wliftover_extra.bedpe"), emit: pairToPairOutput_ch
 
     """
 #!/usr/bin/bash
@@ -108,29 +108,32 @@ fi
 
 echo -e "The From BEDPE file is set to \$targetBEDPE\n"
 
-cat ${bedpeFileTo} |cut -f 1-10 > hgToF
+cat ${bedpeFileTo}  > hgToF
 echo -e "taking the From genome bedpe file with positions of breakpoint liftover to the To genome\n"
-cat \$targetBEDPE |cut -f 1-10 > hgFromF
+cat \$targetBEDPE  > hgFromF
 npnts_hgTo=`cat hgToF|wc -l`
 npnts_hgFrom=`cat hgFromF|wc -l`
 
 #### enforcing existence in both and ignoring strand
 
 echo -e "option a is the From and option b is the To ==>finding overlapping features in both\n"
-echo -e "will save overlapping features for pair to ${pairName}_wliftover_both_samestrand.dbedpe which is a double bedpe (20 columns) the first 10 are for the From and the next 10 are for the To\n"
+echo -e "will save overlapping features for pair to ${pairName}_wliftover_match.dbedpe which is a double bedpe (20 columns) the first 10 are for the From and the next 10 are for the To\n"
 
 
 echo -e "will use slop of ${params.slop} in the pairToPair to get overlaps" 
-pairToPair  -type both -slop "${params.slop}" -is -a hgFromF -b hgToF | sort -k1,1V -k2,2n -k3,3n | uniq > ${pairName}_wliftover_both_samestrand.dbedpe
+pairToPair  -type both -slop "${params.slop}" -is -a hgFromF -b hgToF | sort -k1,1V -k2,2n -k3,3n | uniq > ${pairName}_wliftover_match.dbedpe
+
+### getting output of 20 columns for python
+pairToPair  -type both -slop "${params.slop}" -is -a <(cat hgFromF|cut -f 1-10) -b <(cat hgToF|cut -f 1-10) | sort -k1,1V -k2,2n -k3,3n | uniq > ${pairName}_wliftover_match.dbedpe_forpython
 
 wait
-##### added for testing, generally this gives the same results as the one above
-pairToPair -type both -slop "${params.slop}"  -is -b hgFromF -a hgToF | sort -k1,1V -k2,2n -k3,3n | uniq > ${pairName}_wliftover_both_samestrand.dbedpe_flipped
+##### added for testing and for use below, generally this gives the same results as the one above but reports a that matches b
+pairToPair -type both -slop "${params.slop}"  -is -b hgFromF -a hgToF | sort -k1,1V -k2,2n -k3,3n | uniq > ${pairName}_wliftover_match.dbedpe_flipped
 ######
 
 wait
 
-python ${workflow.projectDir}/bin/process_pairToPairOutput.py ${pairName}_wliftover_both_samestrand.dbedpe >Nmatch_discordant_types
+python ${workflow.projectDir}/bin/process_pairToPairOutput.py ${pairName}_wliftover_match.dbedpe_forpython >Nmatch_discordant_types
 
 nu_overlaps=`cat Nmatch_discordant_types| sed 1d|cut -f 1`
 Noverlap_match_type=`cat Nmatch_discordant_types| sed 1d|cut -f 2`
@@ -141,37 +144,39 @@ meanMidGeomCov=`cat Nmatch_discordant_types| sed 1d|cut -f 5`
 wait
 
 ## convert overlapping result to bedpe
-cat ${pairName}_wliftover_both_samestrand.dbedpe | cut -f 1-10 > ${pairName}_wliftover_both_samestrand.bedpe_from
-cat ${pairName}_wliftover_both_samestrand.dbedpe | cut -f 11-20 > ${pairName}_wliftover_both_samestrand.bedpe_to
+cat ${pairName}_wliftover_match.dbedpe | cut -f 1-10 > ${pairName}_wliftover_match.bedpe_from
+cat ${pairName}_wliftover_match.dbedpe_flipped | cut -f 1-10 > ${pairName}_wliftover_match.bedpe_to
 
 wait
 
 echo -e "finding SVs found using From genome but ends do not overlap the ends of previous overlapping result with the To genome (i.e. in From but exclude the overlap with the To)\n"
-pairToPair  -type notboth -slop "${params.slop}" -is -a hgFromF -b ${pairName}_wliftover_both_samestrand.bedpe_from | sort -k1,1V -k2,2n -k3,3n | uniq > ${pairName}_wliftover_missing.bedpe
+pairToPair  -type notboth -slop "${params.slop}" -is -a hgFromF -b ${pairName}_wliftover_match.bedpe_from | sort -k1,1V -k2,2n -k3,3n | uniq > ${pairName}_wliftover_missing.bedpe
+pairToPair  -type notboth -slop "${params.slop}" -is -a <(cat hgFromF|cut -f 1-10) -b ${pairName}_wliftover_match.bedpe_from | sort -k1,1V -k2,2n -k3,3n | uniq > ${pairName}_wliftover_missing.bedpe_forpython
 
 ###### test if any of the missing are among the matched if there are then more work to be done to detect the missing
-pairToPair  -type both -slop "${params.slop}" -is -a ${pairName}_wliftover_missing.bedpe -b ${pairName}_wliftover_both_samestrand.bedpe_from > test_anyMissing_stillInMatches
+pairToPair  -type both -slop "${params.slop}" -is -a ${pairName}_wliftover_missing.bedpe -b ${pairName}_wliftover_match.bedpe_from > test_anyMissing_stillInMatches
 
 if [[ \$(cat test_anyMissing_stillInMatches|wc -l) -gt 0 ]]; then
     echo "still detecting some missing among the matches, they should be distinct ... exiting" > failures_detected
 fi
 
 wait
-python ${workflow.projectDir}/bin/process_pairToPairOutput.py ${pairName}_wliftover_missing.bedpe >MeanCovACovB_missing
+python ${workflow.projectDir}/bin/process_pairToPairOutput.py ${pairName}_wliftover_missing.bedpe_forpython >MeanCovACovB_missing
 meangeomCovMissing=`cat MeanCovACovB_missing| sed 1d|cut -f 1`
 
 echo -e "finding SVs found using To genome but ends do not overlap the ends of previous overlapping result (i.e. in To but exclude the overlap with the From)\n"
-pairToPair -type notboth -slop "${params.slop}" -is -a hgToF -b ${pairName}_wliftover_both_samestrand.bedpe_to  | sort -k1,1V -k2,2n -k3,3n | uniq > ${pairName}_wliftover_extra.bedpe
+pairToPair -type notboth -slop "${params.slop}" -is -a hgToF -b ${pairName}_wliftover_match.bedpe_to  | sort -k1,1V -k2,2n -k3,3n | uniq > ${pairName}_wliftover_extra.bedpe
+pairToPair -type notboth -slop "${params.slop}" -is -a <(cat hgToF|cut -f 1-10) -b ${pairName}_wliftover_match.bedpe_to  | sort -k1,1V -k2,2n -k3,3n | uniq > ${pairName}_wliftover_extra.bedpe_forpython
 
 ###### test if any of the extra are among the matched if there are then more work to be done to detect the extra
-pairToPair  -type both -slop "${params.slop}" -is -a ${pairName}_wliftover_extra.bedpe -b ${pairName}_wliftover_both_samestrand.bedpe_to > test_anyExtra_stillInMatches
+pairToPair  -type both -slop "${params.slop}" -is -a ${pairName}_wliftover_extra.bedpe -b ${pairName}_wliftover_match.bedpe_to > test_anyExtra_stillInMatches
 
 if [[ \$(cat test_anyExtra_stillInMatches|wc -l) -gt 0 ]]; then
     echo "still detecting some extra among the matches, they should be distinct ... exiting" >> failures_detected
 fi
 
 wait
-python ${workflow.projectDir}/bin/process_pairToPairOutput.py ${pairName}_wliftover_extra.bedpe >MeanCovACovB_extra
+python ${workflow.projectDir}/bin/process_pairToPairOutput.py ${pairName}_wliftover_extra.bedpe_forpython >MeanCovACovB_extra
 meangeomCovExtra=`cat MeanCovACovB_extra| sed 1d|cut -f 1`
 
 wait

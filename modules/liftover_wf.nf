@@ -70,15 +70,27 @@ if '${inputFormat}'=='rawCrest':
 elif '${inputFormat}'=='bedpe':
     dflo = dflo[['liftover_chr_PosA','liftover_base_PosA','liftover_ort_PosA','liftover_chr_PosB','liftover_base_PosB','liftover_ort_PosB','Type','score']]
     dflo.columns = ['ChrA','PosA','OrtA','ChrB','PosB','OrtB','Type','score']
+elif '${inputFormat}'=='crestPost':
+    if dflo.columns.isin(['rating', 'Usage']).sum()==2:
+        addcols=['Fusion Gene','rating','Usage']
+    elif dflo.columns.isin(['rating']).sum()==1:
+        addcols=['Fusion Gene','rating']
+    elif dflo.columns.isin(['Usage']).sum()==1:
+        addcols=['Fusion Gene','Usage']
+    else:
+        addcols=['Fusion Gene']
 
-print('saving a predSV file')
+    dflo = dflo[['liftover_chr_PosA','liftover_base_PosA','liftover_ort_PosA','liftover_chr_PosB','liftover_base_PosB','liftover_ort_PosB','Type','CoverA','CoverB'] + addcols]
+    dflo.columns = ['ChrA','PosA','OrtA','ChrB','PosB','OrtB','Type','CoverA','CoverB'] + addcols
+
+
+
+print('saving a liftover file')
 dflo.to_csv(outputFWpath, sep='\t', index=False)
 
 "
-### end of pthon script
+### end of python script
 
-#echo "save a liftover bedpe file and pad the end positions by 1bp to start+1 and make sure the positions are all numeric"
-#python ${workflow.projectDir}/bin/liftOverCoord_step1.py ${pairName}_${genome}lo ${pairName}_${genome}lo_.bedpe 
 echo "done"
 
     """

@@ -44,7 +44,7 @@ def runMod = null
 // check if CLI arg was passed; if so used that instead
 if(params.mode == null){
     runMode = default_mode
-    } else if(params.mode == "crest" | params.mode == "crest-post" | params.mode == "crest-localized" | params.mode == "crest-localized-post" | params.mode == "crest-tumoronly"| params.mode=="crest-tumoronly-post"| params.mode=="discordant" | params.mode=="discordant-post"| params.mode=="conserting-crest") {
+    } else if(params.mode == "crest" | params.mode == "crest-post" | params.mode == "crest-post-wcoord" | params.mode == "crest-localized" | params.mode == "crest-localized-post" | params.mode == "crest-tumoronly"| params.mode=="crest-tumoronly-post"| params.mode=="discordant" | params.mode=="discordant-post"| params.mode=="conserting-crest") {
         runMode = params.mode
 } else {
     log.error("No valid mode specified. Valid modes are: 'crest', 'crest-post', ...etc ")
@@ -103,6 +103,9 @@ include { crest_wf } from './modules/crest_wf'
 //import crest_post workflow
 include { crest_post_wf } from './modules/crest_post_wf' 
 
+//import crest_post workflow
+include { crest_post_wcoord_wf } from './modules/crest_post_wcoord_wf' 
+
 workflow {
     main:
 
@@ -125,6 +128,15 @@ workflow {
         crestPostRuns.map{ pair -> [ pair.officialGenome,pair.anls_run_name,pair.formal_name,pair.pair_name, pair.genome, file(pair.fusionGenes_file)] }.set{crest_post_runs_ch}
 
         crest_post_wf(crest_post_runs_ch)
+
+   } else if (runMode == "crest-post-wcoord") { //run the entire crest-post-wcoord workflow
+
+        /* create channel from CSV file for crest-post runs*/
+        crestPostRuns = channel.fromPath(params.crest_post_anls_run_names_file).splitCsv(header: true, sep: ",")
+        //officialGenome,anls_run_name,formal_name,pair_name,genome,fusionGenes_file
+        crestPostRuns.map{ pair -> [ pair.officialGenome,pair.anls_run_name,pair.formal_name,pair.pair_name, pair.genome, file(pair.fusionGenes_file)] }.set{crest_post_runs_ch}
+
+        crest_post_wcoord_wf(crest_post_runs_ch)
 
    }
 }
