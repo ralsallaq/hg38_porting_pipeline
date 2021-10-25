@@ -1,11 +1,11 @@
 /*============================= crest workflow ===============================*/
-include { liftoverSVs as liftoverSVs_round1 }  from './liftover_wf'
-include { liftoverSVs as liftoverSVs_round2 }  from './liftover_wf'
-include { liftoverSVs }  from './liftover_wf'
-include { liftoverSVs as liftoverMissing }  from './liftover_wf' params(outD:null,FromTo: 'missing_hg38Tohg19')
-include {reformatLOPredSVToBEDPE as refor_hg38_ToBEDPE } from './miscellaneous.nf'
-include {reformatLOPredSVToBEDPE as refor_hg19_ToBEDPE } from './miscellaneous.nf'
-include {reformatLOPredSVToBEDPE as refor_missing_ToBEDPE } from './miscellaneous.nf' params(outD:'analysis/',FromTo: 'missing_hg38Tohg19')
+include { liftoverSVs as liftoverSVs_round1 }  from './liftover_wf' params(outD:'analysis/', FromTo:'hg19ToHg38')
+include { liftoverSVs as liftoverSVs_round2 }  from './liftover_wf' params(outD:'analysis/', FromTo:'hg19ToHg38')
+include { liftoverSVs }  from './liftover_wf' params(outD:'analysis/', FromTo:'hg19ToHg38')
+include { liftoverSVs as liftoverMissing }  from './liftover_wf' params(outD:'analysis/',FromTo: 'missing_hg38Tohg19')
+include {reformatLOPredSVToBEDPE as refor_hg38_ToBEDPE } from './miscellaneous.nf' params(outD:'analysis/',OutputDir:'bedpes_in_hg38')
+include {reformatLOPredSVToBEDPE as refor_hg19_ToBEDPE } from './miscellaneous.nf' params(outD:'analysis/',OutputDir:'bedpes_in_hg38')
+include {reformatLOPredSVToBEDPE as refor_missing_ToBEDPE } from './miscellaneous.nf' params(outD:'analysis/',OutputDir: 'missing_hg38Tohg19')
 
 workflow crest_wf {
     take:crest_runs_ch
