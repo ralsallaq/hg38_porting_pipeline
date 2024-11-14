@@ -139,7 +139,7 @@ process reformatLOPredSVToBEDPE {
     output:
     tuple val(anlsRunName), val(pairName), val(genome), path("${pairName}_${genome}_In${finalGenome}.bedpe"), emit: bedpeCrestOutput_ch
 
-    beforeScript "export PATH=${workflow.projectDir}/bin:$PATH; source set_env.sh"
+    //beforeScript "export PATH=${workflow.projectDir}/bin:$PATH; source set_env.sh"
 
     """
 #!/usr/bin/env python3

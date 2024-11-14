@@ -18,6 +18,7 @@ workflow crest_wf {
         /***** to reduce liftover artifacts liftover for hg38 data will be done twice  and for hg19 only once****/
         //liftover hg38 to hg19
         liftoverSVs_round1(crest_runs_ch.filter{it[2]=='hg38'}, channel.value('GRCh38|to|GRCh37-lite'), channel.value('hg38_to_hg19'), channel.value('chrX'), channel.value('rawCrest'))
+
         //liftover hg19 back to hg38
         liftoverSVs_round2(liftoverSVs_round1.out, channel.value('GRCh37-lite|to|GRCh38'), channel.value('hg19_to_hg38'), channel.value('X'), channel.value('rawCrest'))
         
@@ -30,13 +31,13 @@ workflow crest_wf {
         //reformat to bedpe, notice this will be in hg38 coordinates and formats
         refor_hg19_ToBEDPE(liftoverSVs.out, channel.value('hg38'))
 
-        //combine channels hg38 first and hg19 second
-        bedpe_combined_ch = refor_hg38_ToBEDPE.out.filter{it[2]=='hg38'}.map{it->[it[1], it[0], it[2], it[3]]}.join(refor_hg19_ToBEDPE.out.filter{it[2]=='hg19'}.map{it->[it[1], it[0], it[2], it[3]]})
+        //combine channels hg38 first and hg19 second on a unified common entry
+        //notice here sample name are unified to allow the join as they might be different
+        refor_hg38_ToBEDPE.out.filter{it[2]=='hg38'}.map{it->['hg19_to_hg38_sample', it[0], it[2], it[3]]}.join(refor_hg19_ToBEDPE.out.filter{it[2]=='hg19'}.map{it->['hg19_to_hg38_sample', it[0], it[2], it[3]]}).set{bedpe_combined_ch}
 
-        //bedpe_combined_ch.view()
         
-        emit:
-            liftoverSVs_round2.out.filter{it[2]=='hg38'}.join(liftoverSVs.out)
+        //emit:
+        //    liftoverSVs_round2.out.filter{it[2]=='hg38'}.join(liftoverSVs.out)
 
     } else if (params.FromTo == 'hg38_to_hg19') {
         //TODO
@@ -48,10 +49,12 @@ workflow crest_wf {
         liftoverSVs(reformatToBEDPE.out.filter{it[2]=='hg38'})
 
         //combine channels hg38 first and hg19 second
-        bedpe_combined_ch = liftoverSVs.out.map{it->[it[1], it[0], it[2], it[3]]}.join(reformatToBEDPE.out.filter{it[2]=='hg19'}.map{it->[it[1], it[0], it[2], it[3]]})
+        //notice here sample name are unified to allow the join as they might be different
+        liftoverSVs.out.map{it->['hg38_to_hg19_sample', it[0], it[2], it[3]]}.join(reformatToBEDPE.out.filter{it[2]=='hg19'}.map{it->['hg38_to_hg19_sample', it[0], it[2], it[3]]}).set {bedpe_combined_ch}
 
-        emit:
-            liftoverSVs.out.join(reformatToBEDPE.out.filter{it[2]=='hg19'}).view()
+
+        //emit:
+        //    liftoverSVs.out.join(reformatToBEDPE.out.filter{it[2]=='hg19'}).view()
     } else {
         log.error("Not valid lift_over_fromTo. Valid modes are: 'GRCh37-lite|to|GRCh38' or 'GRCh38|to|GRCh37-lite' only ")
         exit 1
@@ -93,7 +96,6 @@ process compareSVs {
 #!/usr/bin/bash
 
 module load bedtools/2.30.0
-module load python/3.7.0
 
 printf "pair\tNbreakpnts_hgFrom\tNbreakpnts_hgTo\tNoverlappingSVs\tNoverlapping_match_type\tNoverlapping_discordant_type\tEvidenceSummaryForOverlapping_diff\tEvidenceSummaryForOverlapping_mid\tNmissing\tEvidenceSummaryForMising\tNextra\tEvidenceSummaryForExtra\n" > summary_${pairName}_${params.FromTo}
 echo -e "The From genome is the current genome and the To genome is the new genome \n"

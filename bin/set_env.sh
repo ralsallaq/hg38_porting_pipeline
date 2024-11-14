@@ -1,7 +1,6 @@
 module load ucsc
 module load vcftools
 module load blat
-module load python/3.7.0
 cbload () {
     local path=/research/rgs01/resgen/system/sjcbinit/cbload.sh;
     if [ ! -f $path ]; then

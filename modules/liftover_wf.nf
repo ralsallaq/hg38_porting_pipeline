@@ -19,10 +19,16 @@ process liftoverSVs {
 
     """
 #!/usr/bin/bash
+
 echo "you need to set up the environment for liftover_flatfile.pl and other programs by: \
-cbload configs \
-cbload common-scripts-internal \
-"
+cbload seq_anls_ops \
+cbload snv-annovar \
+module load vcftools/0.1.15 \
+module load samtools/1.15.1 \
+module load sjcb/ucsc/012314 \
+module load perl/5.10.1 #sjcb perl 5.30.0 did not work \
+1) vcftools/0.1.15   2) samtools/1.15.1   3) sjcb/ucsc/012314   4) perl/5.10.1"
+
 
 echo "official names of genome from and to are needed for liftover_sv.sh"
 
